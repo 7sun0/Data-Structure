@@ -1,0 +1,19 @@
+# 编译生成的可执行文件（无后缀）
+Add_array
+run
+*.out
+a.out
+
+# VSCode 本地配置
+.vscode/
+
+# 编译输出目录
+output/
+
+# 临时文件、日志
+*.tmp
+*.log
+
+# 系统文件
+.DS_Store
+Thumbs.db
