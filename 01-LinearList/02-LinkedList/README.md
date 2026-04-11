@@ -270,3 +270,134 @@ int main() {
     print();           // 10 20 30
 }
 ```
+### 链表实战：实现多项式的加法
+我们在面对多项式的加法的时候，比较简单的方法是通过数组。但是为了**避免指数太大、变化太跳跃**，使得数组有太多元素为无意义的0，导致有太多空间浪费，我们一般会采用链表的形式来实现。思路是将链表的节点封装为三部分：coef表示一项的系数，expon表示一项的指数，Xnext表示下一个节点的地址。  
+**核心思路**：当指数相等时我们将系数相加，然后拼接到结果链表之后，指数不相等时便将指数高的一项拼接到结果链表之后。（重要前提是两个多项式指数是从大到小排列的）
+```cpp
+struct Xnode{
+    int coef;    // 多项式项的系数
+    int expon;   // 多项式项的指数
+    Xnode* next; // 指向当前项的下一项（单链表指针）
+};
+```
+这是拼接函数attach
+```cpp
+void attach(int c,int e,Xnode** rear){
+    Xnode* p=new Xnode;    // 1. 新建结点，存储当前多项式项（c=系数，e=指数）
+    p->coef=c;
+    p->expon=e;
+    p->next=NULL;          // 2. 新结点的next置空（尾结点特征）
+    (*rear)->next=p;       // 3. 把新结点接在当前尾指针rear的后面
+    (*rear)=p;             // 4. 尾指针rear后移，指向新的尾结点
+}
+```
+**注意**：用二级指针 Xnode** rear是因为要修改 rear 本身（让它指向新的尾结点），一级指针只能修改结点内容，无法修改指针指向，二级指针才能操作指针本身。不用判断 *rear == NULL是因为所有调用 attach 的地方，rear 都指向「哨兵哑结点」（提前创建，永远非空），避免了空指针报错，简化代码。  
+  
+多项式生成函数create
+```cpp
+Xnode* create(){
+    int n;
+    cin>>n;                // 输入多项式的非零项个数
+    Xnode* rear=new Xnode; // 1. 创建哨兵哑结点（占位，不存储实际项）
+    Xnode* sentinel=rear;  // 2. 保存哨兵结点地址，后续用于删除
+    while(n--){
+        int c,e;
+        cin>>c>>e;         // 输入每一项的系数c、指数e（需按指数有序输入）
+        attach(c,e,&rear); // 3. 尾插当前项，rear自动后移
+    }
+    Xnode* head=sentinel->next; // 4. 真实头结点 = 哨兵结点的下一个结点
+    delete sentinel;            // 5. 删除哨兵结点，避免内存泄漏
+    return head;                // 6. 返回多项式链表的头结点
+}
+```
+**优势**：哨兵哑结点用法：提前创建一个空结点，让 rear 永远非空，无需在 attach 中判断空指针，代码更简洁、安全。  
+  
+多项式打印函数printx()，比如3 5就是指的3x^5。
+```cpp
+void printx(Xnode* head){
+    if(head==NULL){        // 边界判断：空链表（无有效项）
+        cout<<"error!"<<endl;
+        return;
+    }
+    else{
+        Xnode* cur=head;   // 1. 定义遍历指针cur，从头部开始
+        while(cur){        // 2. 遍历链表，直到cur为NULL（尾结点）
+            cout<<cur->coef<<" "<<cur->expon<<endl; // 打印当前项的系数和指数
+            cur=cur->next; // 3. 指针后移，访问下一项
+        }
+    }
+}
+```  
+  
+核心加法函数add(),思路前面提到过
+```cpp
+Xnode* add(Xnode* h1,Xnode* h2){
+    Xnode* rear=new Xnode;    // 1. 创建哨兵哑结点，用于拼接结果链表
+    Xnode* sentinel=rear;     // 2. 保存哨兵地址，后续删除
+    Xnode* cur1=h1;           // 3. 遍历指针cur1：指向第一个多项式h1
+    Xnode* cur2=h2;           // 4. 遍历指针cur2：指向第二个多项式h2
+
+    // 第一步：同时遍历两个多项式，按指数大小合并
+    while(cur1&&cur2){
+        if(cur1->expon>cur2->expon){  // 情况1：h1当前项指数大，直接尾插h1的项
+            attach(cur1->coef,cur1->expon,&rear);
+            cur1=cur1->next;          // cur1后移，继续处理下一项
+        }
+        else if(cur1->expon<cur2->expon){ // 情况2：h2当前项指数大，直接尾插h2的项
+            attach(cur2->coef,cur2->expon,&rear);
+            cur2=cur2->next;          // cur2后移，继续处理下一项
+        }
+        else{                          // 情况3：指数相同（同类项），合并系数
+            int sum=cur1->coef+cur2->coef;
+            if(sum){                   // 系数和不为0，才添加该项（避免无效项）
+                attach(sum,cur1->expon,&rear);
+            }
+            // 关键：同类项处理完毕，两个指针同时后移（避免死循环）
+            cur1=cur1->next;
+            cur2=cur2->next;
+        }
+    }
+
+    // 第二步：拼接剩余项（其中一个多项式已遍历完，另一个还有剩余）
+    while(cur1){                      // h1还有剩余项，全部尾插
+        attach(cur1->coef,cur1->expon,&rear);
+        cur1=cur1->next;
+    }
+    while(cur2){                      // h2还有剩余项，全部尾插
+        attach(cur2->coef,cur2->expon,&rear);
+        cur2=cur2->next;
+    }
+
+    // 第三步：整理结果链表，释放哨兵结点
+    Xnode* head=sentinel->next;       // 结果链表的真实头结点
+    delete sentinel;                  // 释放哨兵，避免内存泄漏
+    return head;                      // 返回加法结果的头结点
+}
+```
+主函数测试：
+```cpp
+int main(){
+    Xnode* head1=create();  // 1. 创建第一个多项式链表
+    Xnode* head2=create();  // 2. 创建第二个多项式链表
+    Xnode* head3=add(head1,head2); // 3. 两个多项式相加，得到结果链表
+    printx(head3);          // 4. 打印加法结果
+    //控制台结果如下：
+    // 输入第一个多项式（3x⁵ + 2x³ + 1x⁰）
+    3
+    3 5
+    2 3
+    1 0
+
+    // 输入第二个多项式（2x⁵ - 2x³ + 5x¹）
+    3
+    2 5
+    -2 3
+    5 1
+
+    // 输出结果（5x⁵ + 5x¹ + 1x⁰）
+    5 5
+    5 1
+    1 0
+    }
+```
+后续可以试着优化一下打印格式……

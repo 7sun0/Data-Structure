@@ -49,3 +49,102 @@ int main(){
 }
 ```
 为什么这里一开始使用int* arr=new int[3]而不使用int arr[3]？这是因为int arr[3]定义的是一个静态数组，其中的arr是一个常量指针，指向固定内存，不能被赋值，在后续的arr=new_arr步骤时会报错，因为常量不能修改。
+## 顺序表
+顺序表是**线性表的数组存储方式**，数据元素在内存中**连续存放**，是最基础的线性表结构，核心在于用last变量标记最后一个元素的下标，在空表时last=-1。（也就是说，last+1就是数组所有元素的个数）
+### 顺序表的结构体定义与操作
+```cpp
+//顺序表的定义
+#define Maxxroom 100  // 顺序表最大容量
+struct List{
+    int data[Maxxroom];  // 数组：连续存储数据元素
+    int last;            // 标记：最后一个元素的下标
+};
+
+//创建空顺序表 create()
+List* create(){
+    List* Pl=new List;  // 动态分配顺序表内存
+    Pl->last=-1;        // 初始化：空表，无元素
+    return Pl;          // 返回顺序表指针
+}
+
+// 尾部添加元素 add()
+//逻辑：表未满 → last 自增 → 存入数据。
+void add(int n,List* Pl){
+    if(Pl->last+1==Maxxroom){  // 边界判断：表已满
+        cout<<"已满！"<<endl;
+        return;
+    }
+    Pl->data[++Pl->last]=n;    // 先移动last，再赋值
+}
+
+//按位置删除元素 delpost()
+void delpost(int pos,List* Pl){
+    if(Pl->last+1<pos){  // 边界判断：删除位置不合法
+        cout<<"不够长！"<<endl;
+        return;
+    }
+    // 元素前移，覆盖要删除的元素
+    for(int i=pos;i<Pl->last+1;i++){
+        Pl->data[i-1]=Pl->data[i];
+    }
+    Pl->last--;  // 删除后，表长-1
+}
+//关键：删除位置必须合法，元素向前移动覆盖，last--。
+ 
+//按值查找元素 findnum()
+int findnum(int num,List* Pl){
+    // 遍历所有有效元素
+    for(int i=0;i<Pl->last+1;i++){
+        if(Pl->data[i]==num){
+            return i;  // 找到：返回元素下标
+        }
+    }
+    return -1;  // 未找到：返回-1
+}
+//适用：为 delnum 按值删除提供支持。
+
+//按值删除第一个数值为num的元素 delnum()
+void delnum(int num,List* Pl){
+    int i=findnum(num,Pl);  // 先查找元素位置
+    if(i==-1){              // 边界判断：元素不存在
+        cout<<"没有！"<<endl;
+        return;
+    }
+    // 元素前移覆盖
+    for(int j=i+1;j<Pl->last+1;j++){
+        Pl->data[j-1]=Pl->data[j];          
+    }
+    Pl->last--;
+}
+//逻辑：先查找 → 找到则移动元素覆盖 → 更新 last。
+
+//按位置在第pos位置插入元素 insert()
+void insert(int pos,int num,List* Pl){
+    //易错点：注意是last+2，因为它可以插入到数组末尾，（即使这时候看起来更像是add）
+    if(Pl->last+2<pos){      // 边界判断：插入位置不合法
+        cout<<"没有！"<<endl;
+        return;
+    }
+    else if(Pl->last+1==Maxxroom){  // 边界判断：表已满
+        cout<<"不够长！"<<endl;
+        return;
+    }
+    // 元素后移，腾出插入位置
+    for(int i=Pl->last;i>=pos-1;i--){
+        Pl->data[i+1]=Pl->data[i];
+    }
+    Pl->data[pos-1]=num;  // 插入新元素
+    Pl->last++;           // 表长+1
+}
+//关键：合法位置：1 ≤ pos ≤ last+2（支持尾部插入）；
+//元素向后移动腾出空间，再赋值。
+```
+### 顺序表特性总结
+顺序表的优缺点和组成它的数据结构——数组一样，优点自然是随机访问，时间复杂度是O(1)，缺点则是插入/删除效率低，为O(n)，并且容量固定，无法动态扩容。综上，我们总结出：
+- last = -1 是顺序表空表的标志，表长 = last + 1。
+- 插入 / 删除的核心是元素移动：插入后移，删除前移。
+- 所有操作必须做边界判断（表满、位置非法、元素不存在）。
+- 顺序表适合频繁查找、少增删的场景。
+
+## 思考：顺序表看上去就是数组呀，直接用数组也可以实现增删查改，何必多此一举？
+我认为，这是为了建立一个统一的数据结构。在个人对数据使用不多的过程中，顺序表和数组并无过多差异，但是在多人的大项目中，顺序表的封装可以帮助统一行为，让结构统一，操作统一，接口统一，而且可以帮助把数组和长度绑定在一起，这使得了我们在大量数据面前创建大量顺序表的情况下，也可以清楚知道每一个顺序表的长度。
